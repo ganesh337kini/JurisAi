@@ -1,0 +1,27 @@
+# JurisAI AI service — Python dependencies
+# Install Tesseract OCR separately (see README).
+
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+python-dotenv==1.0.1
+pydantic==2.10.3
+
+langchain==0.3.13
+langchain-community==0.3.13
+langchain-core==0.3.28
+langchain-text-splitters==0.3.4
+
+chromadb==1.5.9
+sentence-transformers==3.3.1
+
+pytesseract==0.3.13
+pdfplumber==0.11.4
+PyPDF2==3.0.1
+python-docx==1.1.2
+Pillow==11.0.0
+
+# Phase 2 — summarization, NER, analysis
+transformers==4.47.1
+torch==2.5.1
+spacy==3.8.3

@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Small global polish for a legal-tech feel */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply antialiased;
+}

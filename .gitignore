@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Env files (keep *.env.example tracked)
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+ai-service/.env
+
+# Builds
+frontend/dist/
+
+# Uploads + vector DB (local dev artifacts)
+backend/uploads/*
+!backend/uploads/.gitkeep
+ai-service/chroma_db/*
+!ai-service/chroma_db/.gitkeep
+
+# Python
+ai-service/.venv/
+__pycache__/
+*.py[cod]
+.Python
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
