@@ -8,6 +8,7 @@ from services.clause_detector import detect_clauses
 from services.ner import extract_entities
 from services.simplifier import simplify_text
 from services.summarizer import summarize_document
+from services.risk_detector import detect_risks
 
 
 def analyze_document_text(text: str, explanation_mode: str = "normal") -> dict:
@@ -25,6 +26,7 @@ def analyze_document_text(text: str, explanation_mode: str = "normal") -> dict:
     entities = extract_entities(cleaned)
     clauses = detect_clauses(cleaned)
     simplified = simplify_text(cleaned, mode=explanation_mode)
+    risks = detect_risks(cleaned, clauses, entities)
 
     return {
         "summary": summaries["summary"],
@@ -32,4 +34,5 @@ def analyze_document_text(text: str, explanation_mode: str = "normal") -> dict:
         "entities": entities,
         "clauses": clauses,
         "simplified_text": simplified,
+        "risks": risks,
     }

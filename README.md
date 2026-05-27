@@ -1,9 +1,10 @@
-# JurisAI — Phase 1 & 2
+# JurisAI — Phase 1, 2 & 3
 
 JurisAI is an AI-powered legal document intelligence and learning platform.
 
 - **Phase 1** — Upload, extract text, chunk, embed, and index in ChromaDB.
 - **Phase 2** — Summarize documents, extract key entities (NER), detect clauses, and generate plain-language explanations.
+- **Phase 3** — RAG-powered legal chatbot with chat history (ask questions about uploaded documents).
 
 ## Architecture
 
@@ -28,6 +29,14 @@ JurisAI is an AI-powered legal document intelligence and learning platform.
 2. Backend loads `extractedText` and calls `POST /analyze-document`.
 3. AI service returns summary, entities, clauses, and simplified text.
 4. Backend persists results and the UI shows structured insights.
+
+**Phase 3 (RAG chat)**
+
+1. User opens **Chat** for a processed document (`/chat/:documentId`).
+2. User asks a question (e.g. “What is the rent?”).
+3. Backend loads chat history from MongoDB and calls `POST /chat` on the AI service.
+4. AI service embeds the query, retrieves top chunks from ChromaDB, builds a legal-assistant prompt (with Phase 2 summary/entities when available), and generates an answer.
+5. Backend saves user + AI messages and returns the response with source excerpts.
 
 ## Prerequisites
 
@@ -65,6 +74,10 @@ The first analysis run also downloads the HuggingFace summarization model (see `
 | `VITE_BACKEND_ORIGIN` | frontend | Vite proxy target |
 | `CHROMA_PERSIST_DIR` | ai-service | Chroma persistence |
 | `SUMMARIZER_MODEL` | ai-service | HuggingFace summarizer model id |
+| `OPENAI_API_KEY` | ai-service | Optional — enables GPT answers for chat |
+| `OPENAI_MODEL` | ai-service | Default `gpt-3.5-turbo` |
+| `USE_HF_LLM` | ai-service | Set `true` to use local HuggingFace LLM |
+| `RAG_TOP_K` | backend / ai-service | Chunks retrieved per question (default 5) |
 | `TESSERACT_CMD` | ai-service | Optional OCR binary path |
 
 Copy `backend/.env.example`, `frontend/.env.example`, and `ai-service/.env.example` to `.env` in each app.
@@ -128,10 +141,17 @@ npm run dev
 - `POST /api/documents/analyze/:id` — body: `{ "explanationMode": "normal" | "beginner" }`
 - `DELETE /api/documents/:id`
 
+### Chat (Phase 3, requires JWT)
+
+- `POST /api/chat` — body: `{ "documentId", "query" }`
+- `GET /api/chat/:documentId` — chat history + document context
+- `DELETE /api/chat/:documentId` — clear history
+
 ### AI service
 
 - `POST /process-document` — Phase 1 ingest
 - `POST /analyze-document` — Phase 2 analysis (JSON: `document_id`, `extracted_text`, `explanation_mode`)
+- `POST /chat` — Phase 3 RAG (JSON: `user_id`, `document_id`, `query`, optional `chat_history`, `document_summary`, `entities`)
 - `POST /purge-document` — remove vectors on delete
 - `GET /health`
 
@@ -150,8 +170,22 @@ jurisai/
         ├── ner.py
         ├── clause_detector.py
         ├── simplifier.py
-        └── analyzer.py
+        ├── analyzer.py
+        ├── retriever.py
+        ├── rag_pipeline.py
+        ├── prompt_template.py
+        └── llm_handler.py
 ```
+
+## Phase 3 features
+
+| Feature | Implementation |
+|---------|----------------|
+| RAG retrieval | ChromaDB + `all-MiniLM-L6-v2` embeddings, top-k chunks |
+| LLM | OpenAI (if `OPENAI_API_KEY`) → else extractive fallback; optional `USE_HF_LLM` |
+| Chat history | MongoDB `Chat` model per user + document |
+| UI | Split view: summary/clauses left, chat right |
+| Extras | Suggested questions, copy response, voice input, export chat, source links |
 
 ## Phase 2 features
 
@@ -168,6 +202,8 @@ jurisai/
 
 - **Upload succeeds but status is `failed`:** confirm the AI service is running and `AI_SERVICE_URL` matches.
 - **Analysis fails / 502:** install Phase 2 Python deps, download spaCy model, ensure enough RAM for the summarizer (first run downloads model weights).
+- **Chat returns generic / extractive answers:** set `OPENAI_API_KEY` in `ai-service/.env` for GPT-powered replies; without it, the service uses an extractive fallback from retrieved chunks.
+- **Chat says no chunks:** document must be `completed` with `chunkCount > 0`; re-upload if vectors were purged.
 - **Empty entities:** regex patterns work best on rental/lease-style documents; spaCy augments person/date/money/location when available.
 - **Port 5000 in use (macOS):** set `PORT=5001` in `backend/.env` and `VITE_BACKEND_ORIGIN=http://127.0.0.1:5001` in `frontend/.env`.
 

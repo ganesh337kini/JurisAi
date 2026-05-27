@@ -7,6 +7,7 @@ const cors = require("cors");
 const { connectDB } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -42,11 +43,17 @@ app.use((req, _res, next) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "jurisai-backend" });
+  res.json({ ok: true, service: "jurisai-backend", phase: 3, features: ["auth", "documents", "chat"] });
 });
 
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/chat", chatRoutes);
+
+// JSON 404 for unknown API routes (avoids HTML error pages in the frontend).
+app.use("/api", (req, res) => {
+  res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
+});
 
 app.use(errorHandler);
 

@@ -47,11 +47,21 @@ BEGINNER_EXTRA: list[tuple[str, str]] = [
     (r"\btime is of the essence\b", "deadlines in this agreement are very important"),
 ]
 
+# Pre-compiled replacement tuples for performance (avoids recompiling on each call)
+_LEGAL_REPLACEMENTS_COMPILED = [
+    (re.compile(pat, re.IGNORECASE), repl)
+    for pat, repl in LEGAL_REPLACEMENTS
+]
+_BEGINNER_EXTRA_COMPILED = [
+    (re.compile(pat, re.IGNORECASE), repl)
+    for pat, repl in BEGINNER_EXTRA
+]
 
-def _apply_replacements(text: str, pairs: list[tuple[str, str]]) -> str:
+
+def _apply_replacements(text: str, compiled_pairs: list) -> str:
     result = text
-    for pattern, replacement in pairs:
-        result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+    for compiled_pat, replacement in compiled_pairs:
+        result = compiled_pat.sub(replacement, result)
     return result
 
 
@@ -76,9 +86,9 @@ def simplify_text(text: str, mode: str = "normal") -> str:
     if not (text or "").strip():
         return ""
 
-    simplified = _apply_replacements(text, LEGAL_REPLACEMENTS)
+    simplified = _apply_replacements(text, _LEGAL_REPLACEMENTS_COMPILED)
     if mode == "beginner":
-        simplified = _apply_replacements(simplified, BEGINNER_EXTRA)
+        simplified = _apply_replacements(simplified, _BEGINNER_EXTRA_COMPILED)
         simplified = _shorten_sentences(simplified, max_words=18)
 
     # Trim excessive whitespace

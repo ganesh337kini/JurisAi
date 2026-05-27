@@ -62,6 +62,10 @@ const documentSchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
+    risks: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
     simplifiedText: {
       type: String,
       default: "",

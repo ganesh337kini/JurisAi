@@ -6,6 +6,7 @@ import SignupPage from "./pages/SignupPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import DocumentDetailPage from "./pages/DocumentDetailPage.jsx";
 import UploadPage from "./pages/UploadPage.jsx";
+import ChatPage from "./pages/ChatPage.jsx";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/documents/:id" element={<DocumentDetailPage />} />
+          <Route path="/chat/:documentId" element={<ChatPage />} />
           <Route path="/upload" element={<UploadPage />} />
         </Route>
       </Route>

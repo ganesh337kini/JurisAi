@@ -48,6 +48,37 @@ async function analyzeDocument({ documentId, extractedText, explanationMode = "n
   return response.data;
 }
 
+/**
+ * Phase 3 — RAG chat over document chunks.
+ */
+async function chatWithDocument({
+  userId,
+  documentId,
+  query,
+  chatHistory = [],
+  documentSummary = "",
+  entities = {},
+}) {
+  const response = await axios.post(
+    `${getAiBaseUrl()}/chat`,
+    {
+      user_id: userId,
+      document_id: documentId,
+      query,
+      chat_history: chatHistory,
+      document_summary: documentSummary,
+      entities,
+      top_k: Number(process.env.RAG_TOP_K || 3),
+    },
+    {
+      timeout: 5 * 60 * 1000,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+
+  return response.data;
+}
+
 async function purgeDocument(documentId) {
   try {
     await axios.post(
@@ -63,5 +94,6 @@ async function purgeDocument(documentId) {
 module.exports = {
   processDocument,
   analyzeDocument,
+  chatWithDocument,
   purgeDocument,
 };

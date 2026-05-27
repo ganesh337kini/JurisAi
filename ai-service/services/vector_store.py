@@ -68,10 +68,15 @@ def upsert_chunks(
     """
     Embed each chunk and insert into Chroma.
 
+    Purges existing vectors for document_id before insert so re-processing the same
+    document does not accumulate duplicate embeddings.
+
     Returns number of chunks stored.
     """
     if not chunks:
         return 0
+
+    purge_document(document_id)
 
     embedder = get_embeddings()
     vectors = embedder.embed_documents(chunks)

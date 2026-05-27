@@ -2,6 +2,7 @@ const fs = require("fs/promises");
 const fsSync = require("fs");
 const path = require("path");
 const Document = require("../models/Document");
+const Chat = require("../models/Chat");
 const { analyzeDocument, processDocument, purgeDocument } = require("../services/aiService");
 
 /**
@@ -134,6 +135,7 @@ async function deleteDocument(req, res, next) {
       // File might already be removed — non-fatal
     }
 
+    await Chat.deleteMany({ userId: req.user.id, documentId: doc._id });
     await doc.deleteOne();
     res.json({ message: "Document deleted" });
   } catch (err) {
@@ -184,6 +186,7 @@ async function analyzeDocumentById(req, res, next) {
       doc.shortSummary = ai.short_summary || "";
       doc.entities = ai.entities || {};
       doc.clauses = Array.isArray(ai.clauses) ? ai.clauses : [];
+      doc.risks = Array.isArray(ai.risks) ? ai.risks : [];
       doc.simplifiedText = ai.simplified_text || "";
       doc.analysisStatus = ai.analysis_status || "completed";
       doc.analysisError = "";
@@ -196,6 +199,7 @@ async function analyzeDocumentById(req, res, next) {
           shortSummary: doc.shortSummary,
           entities: doc.entities,
           clauses: doc.clauses,
+          risks: doc.risks,
           simplifiedText: doc.simplifiedText,
           analysisStatus: doc.analysisStatus,
         },

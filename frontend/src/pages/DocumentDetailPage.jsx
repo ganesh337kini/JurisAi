@@ -36,6 +36,62 @@ function EntityRow({ label, value }) {
   );
 }
 
+function formatCurrency(val) {
+  if (!val) return "";
+  const cleaned = String(val).trim();
+  // If value already starts with a currency symbol, return as-is (prevent double symbols)
+  if (/^[^\d\s]/.test(cleaned)) {
+    return cleaned;
+  }
+  return `₹${cleaned}`;
+}
+
+function RiskCard({ risk }) {
+  const [open, setOpen] = useState(false);
+  const severity = risk.severity || "Medium";
+  const border =
+    severity === "High"
+      ? "border-rose-500/40 bg-rose-500/5"
+      : severity === "Medium"
+        ? "border-amber-500/40 bg-amber-500/5"
+        : "border-sky-500/40 bg-sky-500/5";
+
+  const badge =
+    severity === "High"
+      ? "bg-rose-500/15 text-rose-200 ring-rose-500/30"
+      : severity === "Medium"
+        ? "bg-amber-500/15 text-amber-200 ring-amber-500/30"
+        : "bg-sky-500/15 text-sky-200 ring-sky-500/30";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${border}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start justify-between gap-3 text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-white">{risk.clause}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ring-1 ${badge}`}>
+              {severity} Risk
+            </span>
+            <span className="text-xs text-slate-400">({risk.category})</span>
+          </div>
+          <p className="mt-2 text-sm text-slate-300">{risk.description}</p>
+        </div>
+        <span className="shrink-0 text-slate-500">{open ? "▲" : "▼"}</span>
+      </button>
+      {open ? (
+        <div className="mt-3 border-t border-slate-800/60 pt-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-emerald-400">Recommendation</div>
+          <p className="mt-1 text-sm leading-relaxed text-slate-300">{risk.suggestion}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function highlightEntities(text, entities) {
   if (!text || !entities) return text;
   const values = Object.values(entities).filter((v) => v && String(v).length > 1);
@@ -104,6 +160,7 @@ export default function DocumentDetailPage() {
 
   const entities = doc?.entities || {};
   const clauses = doc?.clauses || [];
+  const risks = doc?.risks || [];
   const hasAnalysis = doc?.analysisStatus === "completed";
 
   const displayText = useMemo(() => {
@@ -192,6 +249,12 @@ export default function DocumentDetailPage() {
             <option value="normal">Normal explanation</option>
             <option value="beginner">Beginner explanation</option>
           </select>
+          <Link
+            to={`/chat/${id}`}
+            className="rounded-xl bg-violet-500/15 px-5 py-2.5 text-sm font-semibold text-violet-100 ring-1 ring-violet-500/40 hover:bg-violet-500/25"
+          >
+            Chat with document
+          </Link>
           <button
             type="button"
             onClick={onAnalyze}
@@ -245,11 +308,23 @@ export default function DocumentDetailPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <EntityRow label="Owner" value={entities.owner} />
               <EntityRow label="Tenant" value={entities.tenant} />
-              <EntityRow label="Rent" value={entities.rent ? `₹${entities.rent}` : ""} />
-              <EntityRow label="Deposit" value={entities.deposit ? `₹${entities.deposit}` : ""} />
+              <EntityRow label="Rent" value={formatCurrency(entities.rent)} />
+              <EntityRow label="Deposit" value={formatCurrency(entities.deposit)} />
               <EntityRow label="Duration" value={entities.duration} />
               <EntityRow label="Address" value={entities.address} />
             </div>
+          </InsightCard>
+
+          <InsightCard title="Detected risks" icon="⚠️" accent="rose">
+            {risks.length === 0 ? (
+              <p className="text-sm text-slate-400">No major risks detected in this document.</p>
+            ) : (
+              <div className="space-y-3">
+                {risks.map((r, i) => (
+                  <RiskCard key={`${r.clause}-${i}`} risk={r} />
+                ))}
+              </div>
+            )}
           </InsightCard>
 
           <InsightCard title="Detected clauses" icon="📑" accent="amber">

@@ -19,11 +19,13 @@ from pydantic import BaseModel, Field
 from services.analyzer import analyze_document_text
 from services.chunking import chunk_text
 from services.extraction import extract_text
+from services.rag_pipeline import run_rag_chat
+from services.rag_settings import get_rag_top_k
 from services.vector_store import purge_document, upsert_chunks
 
 load_dotenv()
 
-app = FastAPI(title="JurisAI AI Service", version="2.0.0")
+app = FastAPI(title="JurisAI AI Service", version="3.0.0")
 
 # Allow the Node backend to call this service from local dev.
 _origins = os.getenv("CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000")
@@ -46,9 +48,50 @@ class AnalyzeRequest(BaseModel):
     explanation_mode: str = Field(default="normal", pattern="^(normal|beginner)$")
 
 
+class ChatMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|ai)$")
+    content: str = Field(..., min_length=1)
+
+
+class ChatRequest(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    document_id: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1)
+    chat_history: list[ChatMessage] = Field(default_factory=list)
+    document_summary: str = Field(default="")
+    entities: dict = Field(default_factory=dict)
+    top_k: int = Field(default_factory=get_rag_top_k, ge=1, le=10)
+
+
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "jurisai-ai", "phase": 2}
+    return {"ok": True, "service": "jurisai-ai", "phase": 3}
+
+
+@app.post("/chat")
+def chat_endpoint(body: ChatRequest):
+    """
+    Phase 3: RAG chat — retrieve chunks from ChromaDB and generate an answer.
+    """
+    try:
+        history = [{"role": m.role, "content": m.content} for m in body.chat_history]
+        result = run_rag_chat(
+            user_id=body.user_id,
+            document_id=body.document_id,
+            query=body.query,
+            top_k=body.top_k,
+            chat_history=history,
+            document_summary=body.document_summary,
+            entities=body.entities or None,
+        )
+        return {
+            "answer": result["answer"],
+            "sources": result["sources"],
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/analyze-document")
@@ -69,6 +112,7 @@ def analyze_document_endpoint(body: AnalyzeRequest):
             "entities": result["entities"],
             "clauses": result["clauses"],
             "simplified_text": result["simplified_text"],
+            "risks": result.get("risks", []),
             "analysis_status": "completed",
         }
     except ValueError as exc:
@@ -116,7 +160,7 @@ async def process_document(
         tmp_path.write_bytes(contents)
 
         extracted = extract_text(tmp_path)
-        chunks = chunk_text(extracted, chunk_size=500, chunk_overlap=50)
+        chunks = chunk_text(extracted, chunk_size=600, chunk_overlap=100)
 
         stored = upsert_chunks(
             user_id=user_id,

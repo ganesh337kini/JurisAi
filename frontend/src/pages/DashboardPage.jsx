@@ -145,10 +145,16 @@ export default function DashboardPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
                           <Link
+                            to={`/chat/${d._id}`}
+                            className="rounded-xl bg-violet-500/15 px-3 py-2 text-xs font-semibold text-violet-200 ring-1 ring-violet-500/30 hover:bg-violet-500/25"
+                          >
+                            Chat
+                          </Link>
+                          <Link
                             to={`/documents/${d._id}`}
                             className="rounded-xl bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25"
                           >
-                            {d.analysisStatus === "completed" ? "View insights" : "Analyze"}
+                            {d.analysisStatus === "completed" ? "Insights" : "Analyze"}
                           </Link>
                           <button
                             type="button"
