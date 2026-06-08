@@ -7,6 +7,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import DocumentDetailPage from "./pages/DocumentDetailPage.jsx";
 import UploadPage from "./pages/UploadPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
+import RiskAnalysisPage from "./pages/RiskAnalysisPage.jsx";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/documents/:id" element={<DocumentDetailPage />} />
           <Route path="/chat/:documentId" element={<ChatPage />} />
+          <Route path="/risk/:documentId" element={<RiskAnalysisPage />} />
           <Route path="/upload" element={<UploadPage />} />
         </Route>
       </Route>
