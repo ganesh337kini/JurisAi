@@ -20,6 +20,9 @@ backend/uploads/*
 ai-service/chroma_db/*
 !ai-service/chroma_db/.gitkeep
 
+# Logs
+*.log
+
 # Python
 ai-service/.venv/
 __pycache__/

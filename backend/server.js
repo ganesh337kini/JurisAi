@@ -8,6 +8,7 @@ const { connectDB } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const riskRoutes = require("./routes/riskRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -49,6 +50,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/risk", riskRoutes);
 
 // JSON 404 for unknown API routes (avoids HTML error pages in the frontend).
 app.use("/api", (req, res) => {
