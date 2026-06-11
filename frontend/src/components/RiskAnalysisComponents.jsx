@@ -41,7 +41,7 @@ const RiskBreakdown = ({ breakdown }) => {
 
   return (
     <div className="bg-white rounded-lg p-6 shadow">
-      <h3 className="text-xl font-bold mb-6">Risk Breakdown</h3>
+     <h3 className="text-xl font-bold mb-6" style={{ color: 'black' }}>Risk Breakdown</h3>
       <div className="space-y-4">
         {categories.map((category) => (
           <div key={category.name}>
@@ -70,7 +70,7 @@ const MissingClauses = ({ missingClauses }) => {
       <div className="bg-white rounded-lg p-6 shadow">
         <div className="flex items-center gap-2 mb-4">
           <CheckCircle className="w-6 h-6 text-green-600" />
-          <h3 className="text-xl font-bold">Missing Clauses</h3>
+          <h3 className="text-xl font-bold" style={{ color: 'black' }}>Missing Clauses</h3>
         </div>
         <p className="text-gray-600">All standard clauses are present.</p>
       </div>
@@ -87,7 +87,7 @@ const MissingClauses = ({ missingClauses }) => {
     <div className="bg-white rounded-lg p-6 shadow">
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="w-6 h-6 text-orange-600" />
-        <h3 className="text-xl font-bold">Missing Clauses</h3>
+        <h3 className="text-xl font-bold" style={{ color: 'black' }}>Missing Clauses</h3>
       </div>
       <div className="space-y-4">
         {missingClauses.map((clause, idx) => (
@@ -100,8 +100,8 @@ const MissingClauses = ({ missingClauses }) => {
             </div>
             <p className="text-sm text-gray-600 mb-2">{clause.description}</p>
             <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded">
-              <p className="text-sm text-orange-900 font-semibold">Risk if missing:</p>
-              <p className="text-sm text-orange-800">{clause.risk_if_missing}</p>
+              <p className="text-sm text-orange-900 font-semibold" style={{ color: 'black' }}>Risk if missing:</p>
+              <p className="text-sm text-orange-800" style={{ color: 'black' }}>{clause.risk_if_missing}</p>
             </div>
             <p className="text-sm text-gray-700 mt-3">
               <strong>Recommendation:</strong> {clause.recommendation}
@@ -119,7 +119,7 @@ const RiskyLanguage = ({ riskyItems }) => {
       <div className="bg-white rounded-lg p-6 shadow">
         <div className="flex items-center gap-2 mb-4">
           <CheckCircle className="w-6 h-6 text-green-600" />
-          <h3 className="text-xl font-bold">Risky Language</h3>
+          <h3 className="text-xl font-bold" style={{ color: 'black' }}>Risky Language</h3>
         </div>
         <p className="text-gray-600">No suspicious language patterns detected.</p>
       </div>
@@ -135,7 +135,7 @@ const RiskyLanguage = ({ riskyItems }) => {
     <div className="bg-white rounded-lg p-6 shadow">
       <div className="flex items-center gap-2 mb-4">
         <AlertCircle className="w-6 h-6 text-red-600" />
-        <h3 className="text-xl font-bold">Risky Language Detected</h3>
+        <h3 className="text-xl font-bold" style={{ color: 'black' }}>Risky Language Detected</h3>
       </div>
       <div className="space-y-4">
         {riskyItems.map((item, idx) => (
@@ -184,7 +184,7 @@ const RecommendationsPanel = ({ recommendations }) => {
 
   return (
     <div className="bg-white rounded-lg p-6 shadow">
-      <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+      <h3 className="text-xl font-bold mb-6 flex items-center gap-2" >
         💡 Recommendations
       </h3>
       <div className="space-y-4">
@@ -220,7 +220,7 @@ const FinancialRisks = ({ financialRisks }) => {
     <div className={`border-2 rounded-lg p-6 ${getRiskBg()}`}>
       <div className="flex items-center gap-2 mb-4">
         <AlertCircle className="w-6 h-6 text-orange-600" />
-        <h3 className="text-xl font-bold">Financial Risks</h3>
+        <h3 className="text-xl font-bold" style={{ color: 'black' }}>Financial Risks</h3>
         <span className={`ml-auto px-3 py-1 rounded-full text-xs font-bold ${
           risk_level === 'High' ? 'bg-red-200 text-red-800' : 
           risk_level === 'Medium' ? 'bg-yellow-200 text-yellow-800' :

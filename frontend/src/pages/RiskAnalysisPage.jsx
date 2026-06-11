@@ -265,7 +265,7 @@ export default function RiskAnalysisPage() {
             {/* Compliance Score */}
             {normalizedRiskAnalysis?.complianceScore !== undefined && (
               <div className="bg-white rounded-lg p-6 shadow">
-                <h3 className="text-xl font-bold mb-4">Compliance Score</h3>
+                <h3 className="text-xl font-bold mb-4" style={{ color: 'black' }}>Compliance Score</h3>
                 <div className="flex items-center gap-4">
                   <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
                     <span className="text-4xl font-bold text-white">{normalizedRiskAnalysis.complianceScore}</span>

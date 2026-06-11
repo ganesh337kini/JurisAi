@@ -21,9 +21,6 @@ export default function AppShell() {
               <div className="font-display text-2xl tracking-tight text-white">JurisAI</div>
               <div className="mt-1 text-xs text-slate-400">Document intelligence</div>
             </div>
-            <div className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-200 ring-1 ring-emerald-500/20">
-              Phase 3
-            </div>
           </div>
 
           <nav className="mt-10 flex-1 space-y-2">
