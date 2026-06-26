@@ -203,16 +203,41 @@ def _score_answer(question: dict, user_answer: str) -> tuple[bool, str]:
     given = _normalize(user_answer)
     qtype = question.get("type", "")
 
-    if qtype in ("mcq", "true_false"):
+    # ── Never award marks for blank submissions ──────────────────────────────
+    if not given:
+        is_correct = False
+
+    elif qtype in ("mcq", "true_false"):
+        # Exact match only
         is_correct = given == correct
+
     elif qtype in ("short_answer", "scenario", "fill_blank"):
-        is_correct = correct in given or given in correct or (
-            len(given) > 3 and len(set(given.split()) & set(correct.split())) >= max(1, len(correct.split()) // 2)
+        # Must have a non-trivial answer AND meaningful word overlap
+        given_words = set(given.split())
+        correct_words = set(correct.split())
+
+        # Require at least 1 matching word (excluding very common stop-words)
+        STOP = {"the", "a", "an", "is", "in", "of", "to", "and", "or", "this", "for"}
+        overlap = (given_words - STOP) & (correct_words - STOP)
+
+        # Exact substring match OR sufficient word overlap
+        is_correct = (
+            correct in given                        # user's answer contains the correct answer
+            or (len(given) >= 2 and given in correct)  # correct answer contains user's (only if user wrote something meaningful)
+            or (
+                len(overlap) >= max(1, len(correct_words - STOP) // 2)
+                and len(given) >= 3                 # must have typed at least 3 chars
+            )
         )
     else:
         is_correct = given == correct
 
-    feedback = question.get("explanation", "") if is_correct else f"Expected: {question.get('correct_answer', '')}"
+    if is_correct:
+        feedback = question.get("explanation", "Correct!")
+    else:
+        expected = question.get("correct_answer", "")
+        feedback = f"Incorrect. Expected: {expected}" if expected else "Incorrect."
+
     return is_correct, feedback
 
 

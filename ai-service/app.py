@@ -409,22 +409,8 @@ async def analyze_risk_endpoint(body: RiskAnalysisRequest):
         # Analyze financial risks
         financial_risks = risk_engine.analyze_financial_risks(body.extracted_text)
         
-        # Basic clause risk scoring (without LLM for now - would need async LLM call)
-        clause_risks = []
-        for clause in body.clauses:
-            # Simple heuristic scoring
-            risk_score = 0.5
-            if any(word in clause.lower() for word in ["unlimited", "automatic", "penalty"]):
-                risk_score = 0.7
-            elif any(word in clause.lower() for word in ["mutual", "balanced", "fair"]):
-                risk_score = 0.3
-            
-            clause_risks.append({
-                "clause": clause,
-                "risk_level": "High" if risk_score > 0.6 else ("Medium" if risk_score > 0.4 else "Low"),
-                "risk_score": risk_score,
-                "explanation": "Requires detailed review"
-            })
+        # Rule-based clause risk scoring (no LLM dependency)
+        clause_risks = risk_engine.analyze_clause_risk_sync(body.clauses)
         
         # Calculate overall risk score
         overall_score, risk_breakdown = risk_engine.calculate_risk_score(

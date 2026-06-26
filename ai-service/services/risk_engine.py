@@ -11,19 +11,16 @@ Analyzes legal documents for:
 """
 
 import json
-from typing import Dict, List, Tuple, Any
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
-from langchain_community.chat_models import ChatOllama
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class RiskEngine:
     """Analyzes legal documents for risks and compliance issues."""
 
     def __init__(self, llm=None):
-        """Initialize risk engine with LLM."""
-        # Use local LLM or OpenAI fallback
-        self.llm = llm or ChatOllama(model="llama2")
+        """Initialize risk engine (rule-based — no external LLM required)."""
+        self.llm: Optional[Any] = llm  # Optional; only used by async clause analysis
         
         # Risk scoring thresholds
         self.HIGH_RISK_THRESHOLD = 0.7
@@ -158,66 +155,36 @@ class RiskEngine:
             }
         }
 
-    async def analyze_clause_risk(self, clauses: List[str]) -> List[Dict[str, Any]]:
+    def analyze_clause_risk_sync(self, clauses: List[str]) -> List[Dict[str, Any]]:
         """
-        Analyze individual clauses for risk level.
-        
-        Args:
-            clauses: List of clause texts
-            
-        Returns:
-            List of clause risk assessments
+        Rule-based clause risk analysis (no LLM required).
+        Scores each clause by scanning for high/low risk keywords.
         """
-        prompt = f"""Analyze each of these legal clauses and assess the risk level for each party.
+        HIGH_RISK_WORDS = [
+            "unlimited", "automatic", "penalty", "forfeit", "sole discretion",
+            "non-refundable", "irrevocable", "indemnify all", "hold harmless",
+            "without notice", "at will", "liquidated damages",
+        ]
+        LOW_RISK_WORDS = ["mutual", "balanced", "fair", "reasonable", "both parties"]
 
-Clauses:
-{json.dumps(clauses, indent=2)}
+        results = []
+        for clause in clauses:
+            lower = clause.lower()
+            risk_score = 0.45  # default medium-low
+            if any(w in lower for w in HIGH_RISK_WORDS):
+                risk_score = 0.75
+            elif any(w in lower for w in LOW_RISK_WORDS):
+                risk_score = 0.25
 
-For each clause, provide:
-1. The clause text
-2. Risk level (Low/Medium/High)
-3. Explanation of risks
-4. Who bears the risk (party A/party B/both)
-5. Mitigation suggestions
-
-Return as JSON array with structure:
-[
-  {{
-    "clause": "...",
-    "risk_level": "...",
-    "risk_score": 0-1,
-    "explanation": "...",
-    "affected_party": "...",
-    "mitigation": "..."
-  }}
-]
-"""
-        
-        message = HumanMessage(content=prompt)
-        response = await self.llm.ainvoke([message])
-        
-        try:
-            # Extract JSON from response
-            content = response.content
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-            
-            return json.loads(content)
-        except (json.JSONDecodeError, IndexError):
-            # Fallback: return basic analysis
-            return [
-                {
-                    "clause": clause,
-                    "risk_level": "Medium",
-                    "risk_score": 0.5,
-                    "explanation": "Requires expert review",
-                    "affected_party": "both",
-                    "mitigation": "Consider consulting legal counsel"
-                }
-                for clause in clauses
-            ]
+            results.append({
+                "clause": clause[:300],
+                "risk_level": "High" if risk_score > 0.6 else ("Medium" if risk_score > 0.35 else "Low"),
+                "risk_score": risk_score,
+                "explanation": "Contains high-risk language" if risk_score > 0.6 else "Requires review",
+                "affected_party": "both",
+                "mitigation": "Consult legal counsel for this clause",
+            })
+        return results
 
     def detect_missing_clauses(self, document_text: str) -> List[Dict[str, Any]]:
         """
@@ -261,8 +228,6 @@ Return as JSON array with structure:
         Returns:
             List of detected risky phrases with locations
         """
-        import re
-        
         risky_items = []
         document_lower = document_text.lower()
         
@@ -301,8 +266,6 @@ Return as JSON array with structure:
         Returns:
             Financial risk analysis
         """
-        import re
-
         financial_risks = {
             "deposits": [],
             "fees": [],
