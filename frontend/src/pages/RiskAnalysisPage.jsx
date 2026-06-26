@@ -63,19 +63,85 @@ export default function RiskAnalysisPage() {
     document.body.removeChild(element);
   };
 
-  const normalizeAnalysis = (analysis) => ({
-    overallRiskScore: analysis.overallRiskScore ?? analysis.overall_risk_score ?? 0,
-    riskLevel: analysis.riskLevel ?? analysis.risk_level ?? 'Unknown',
-    complianceScore: analysis.complianceScore ?? analysis.compliance_score ?? null,
-    analysisStatus: analysis.analysisStatus ?? analysis.analysis_status ?? 'unknown',
-    analyzedAt: analysis.analyzedAt ?? analysis.analyzed_at ?? null,
-    riskBreakdown: analysis.riskBreakdown ?? analysis.risk_breakdown ?? null,
-    missingClauses: analysis.missingClauses ?? analysis.missing_clauses ?? [],
-    riskyLanguage: analysis.riskyLanguage ?? analysis.risky_language ?? [],
-    financialRisks: analysis.financialRisks ?? analysis.financial_risks ?? null,
-    recommendations: analysis.recommendations ?? [],
-    ...analysis,
-  });
+  const normalizeAnalysis = (analysis) => {
+    const missingClauses = analysis.missingClauses ?? analysis.missing_clauses ?? [];
+    const riskyLanguage = analysis.riskyLanguage ?? analysis.risky_language ?? [];
+    const financialRisks = analysis.financialRisks ?? analysis.financial_risks ?? null;
+    const clauseRisks = analysis.clauseRisks ?? analysis.clause_risks ?? [];
+    const rawBreakdown = analysis.riskBreakdown ?? analysis.risk_breakdown ?? null;
+
+    let riskBreakdown = rawBreakdown
+      ? {
+          clause_risk: rawBreakdown.clause_risk ?? rawBreakdown.clauseRisk ?? 0,
+          missing_clauses: rawBreakdown.missing_clauses ?? rawBreakdown.missingClauses ?? 0,
+          risky_language: rawBreakdown.risky_language ?? rawBreakdown.riskyLanguage ?? 0,
+          financial_risk: rawBreakdown.financial_risk ?? rawBreakdown.financialRisk ?? 0,
+        }
+      : null;
+
+    const breakdownIsEmpty =
+      !riskBreakdown ||
+      !Object.values(riskBreakdown).some((value) => Number(value) > 0);
+
+    if (breakdownIsEmpty && (missingClauses.length || riskyLanguage.length || clauseRisks.length)) {
+      const recomputed = {
+        clause_risk: clauseRisks.length
+          ? clauseRisks.reduce(
+              (sum, clause) => sum + (clause.riskScore ?? clause.risk_score ?? 0.5),
+              0
+            ) / clauseRisks.length
+          : 0,
+        missing_clauses: Math.min(
+          missingClauses.reduce((score, clause) => {
+            if (clause.importance === 'high') return score + 0.1;
+            if (clause.importance === 'medium') return score + 0.05;
+            return score;
+          }, 0),
+          1
+        ),
+        risky_language: Math.min(
+          riskyLanguage.reduce((score, item) => {
+            const level = String(item.risk_level ?? item.riskLevel ?? '').toLowerCase();
+            if (level === 'high') return score + 0.08;
+            if (level === 'medium') return score + 0.03;
+            return score;
+          }, 0),
+          1
+        ),
+        financial_risk:
+          (financialRisks?.riskLevel ?? financialRisks?.risk_level) === 'High'
+            ? 0.8
+            : (financialRisks?.riskLevel ?? financialRisks?.risk_level) === 'Medium'
+              ? 0.4
+              : 0.1,
+      };
+      riskBreakdown = recomputed;
+    }
+
+    return {
+      ...analysis,
+      overallRiskScore:
+        analysis.overallRiskScore ??
+        analysis.overall_risk_score ??
+        (riskBreakdown
+          ? Math.round(
+              (riskBreakdown.clause_risk ?? 0) * 35 +
+                (riskBreakdown.missing_clauses ?? 0) * 30 +
+                (riskBreakdown.risky_language ?? 0) * 20 +
+                (riskBreakdown.financial_risk ?? 0) * 15
+            )
+          : 0),
+      riskLevel: analysis.riskLevel ?? analysis.risk_level ?? 'Unknown',
+      complianceScore: analysis.complianceScore ?? analysis.compliance_score ?? null,
+      analysisStatus: analysis.analysisStatus ?? analysis.analysis_status ?? 'unknown',
+      analyzedAt: analysis.analyzedAt ?? analysis.analyzed_at ?? null,
+      riskBreakdown,
+      missingClauses,
+      riskyLanguage,
+      financialRisks,
+      recommendations: analysis.recommendations ?? [],
+    };
+  };
 
   const generateReport = (analysis) => {
     const normalized = normalizeAnalysis(analysis);
@@ -89,7 +155,7 @@ export default function RiskAnalysisPage() {
 
     report += `RISK BREAKDOWN\n`;
     report += `${'-'.repeat(60)}\n`;
-    const breakdown = analysis.risk_breakdown;
+    const breakdown = normalized.riskBreakdown;
     if (breakdown) {
       report += `Clause Risk: ${Math.round(breakdown.clause_risk * 100)}%\n`;
       report += `Missing Clauses: ${Math.round(breakdown.missing_clauses * 100)}%\n`;
@@ -101,9 +167,11 @@ export default function RiskAnalysisPage() {
       report += `MISSING CLAUSES (${normalized.missingClauses.length})\n`;
       report += `${'-'.repeat(60)}\n`;
       normalized.missingClauses.forEach((clause) => {
-        report += `- ${clause.clause_name} (${clause.importance.toUpperCase()})\n`;
+        const clauseName = clause.clause_name ?? clause.clauseName ?? 'Unknown clause';
+        const riskIfMissing = clause.risk_if_missing ?? clause.riskIfMissing ?? '';
+        report += `- ${clauseName} (${clause.importance.toUpperCase()})\n`;
         report += `  ${clause.description}\n`;
-        report += `  Risk: ${clause.risk_if_missing}\n`;
+        report += `  Risk: ${riskIfMissing}\n`;
         report += `  Recommendation: ${clause.recommendation}\n\n`;
       });
     }
@@ -112,16 +180,19 @@ export default function RiskAnalysisPage() {
       report += `RISKY LANGUAGE (${normalized.riskyLanguage.length} items)\n`;
       report += `${'-'.repeat(60)}\n`;
       normalized.riskyLanguage.forEach((item) => {
-        report += `- "${item.detected_text}" [${item.risk_level} Risk]\n`;
-        report += `  Type: ${item.risk_type}\n`;
+        const detectedText = item.detected_text ?? item.detectedText ?? '';
+        const riskLevel = item.risk_level ?? item.riskLevel ?? 'Medium';
+        const riskType = item.risk_type ?? item.riskType ?? 'Risk';
+        report += `- "${detectedText}" [${riskLevel} Risk]\n`;
+        report += `  Type: ${riskType}\n`;
         report += `  Explanation: ${item.explanation}\n\n`;
       });
     }
 
-    if (analysis.recommendations && analysis.recommendations.length > 0) {
-      report += `RECOMMENDATIONS (${analysis.recommendations.length})\n`;
+    if (normalized.recommendations && normalized.recommendations.length > 0) {
+      report += `RECOMMENDATIONS (${normalized.recommendations.length})\n`;
       report += `${'-'.repeat(60)}\n`;
-      analysis.recommendations.forEach((rec) => {
+      normalized.recommendations.forEach((rec) => {
         report += `[${rec.priority}] ${rec.action}\n`;
         report += `Type: ${rec.type}\n`;
         report += `Rationale: ${rec.rationale}\n\n`;

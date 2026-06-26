@@ -67,7 +67,7 @@ export default function LearningNotesPage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/learning" className="text-sm text-emerald-300 hover:underline">
+      <Link to="/learning/hub" className="text-sm text-emerald-300 hover:underline">
         ← Learning Hub
       </Link>
       <div className="font-display text-3xl text-white">Study Notes</div>

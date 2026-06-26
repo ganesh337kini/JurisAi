@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../api/client.js";
 import Spinner from "../components/Spinner.jsx";
 
@@ -12,6 +12,7 @@ const CATEGORIES = [
 ];
 
 export default function DiscussionForum() {
+  const navigate = useNavigate();
   const [discussions, setDiscussions] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +74,15 @@ export default function DiscussionForum() {
 
   return (
     <div className="space-y-6">
-      <div className="font-display text-4xl text-white">Discussion Forum</div>
+      <div className="flex items-center justify-between">
+        <div className="font-display text-4xl text-white">Discussion Forum</div>
+        <Link
+          to="/learning/hub"
+          className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2 text-sm text-amber-300 ring-1 ring-amber-500/20 hover:bg-amber-500/20 transition"
+        >
+          💬 Open a Room from Learning Hub
+        </Link>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -121,7 +130,7 @@ export default function DiscussionForum() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
           {discussions.map((d) => (
-            <button
+              <button
               key={d._id}
               type="button"
               onClick={() => openDiscussion(d._id)}
@@ -130,8 +139,19 @@ export default function DiscussionForum() {
               <div className="text-xs text-emerald-400">{d.category}</div>
               <div className="mt-1 font-medium text-white">{d.title}</div>
               <div className="mt-1 line-clamp-2 text-sm text-slate-400">{d.content}</div>
-              <div className="mt-2 text-xs text-slate-600">
-                {d.userId?.name || "User"} · {d.replies?.length || 0} replies
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-xs text-slate-600">
+                  {d.userId?.name || "User"} · {d.replies?.length || 0} replies
+                </span>
+                {d.documentId && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/rooms/${d.documentId._id || d.documentId}`); }}
+                    className="rounded-lg bg-amber-500/10 px-2 py-1 text-xs text-amber-300 ring-1 ring-amber-500/20 hover:bg-amber-500/20 transition"
+                  >
+                    💬 Open Room
+                  </button>
+                )}
               </div>
             </button>
           ))}

@@ -72,6 +72,19 @@ class RiskEngine:
                 "description": "Specifies who bears responsibility for damages"
             }
         }
+
+        # Content keywords used to decide whether a standard clause is present.
+        # Avoid generic words like "clause" that cause false positives.
+        self.CLAUSE_PRESENCE_KEYWORDS = {
+            "termination": ["termination", "terminate", "notice period", "end of agreement", "vacate"],
+            "confidentiality": ["confidential", "non-disclosure", "nda", "proprietary information"],
+            "liability": ["liability", "limitation of liability", "liable for", "damages"],
+            "dispute_resolution": ["dispute", "arbitration", "mediation", "governing law", "jurisdiction"],
+            "force_majeure": ["force majeure", "act of god", "unforeseen event"],
+            "payment_terms": ["payment", "rent", "fee", "consideration", "payable", "monthly rent"],
+            "renewal": ["renewal", "renew", "extension of term", "auto-renew"],
+            "indemnification": ["indemnif", "hold harmless", "indemnity"],
+        }
         
         # Risky language patterns
         self.RISKY_PHRASES = {
@@ -220,8 +233,10 @@ Return as JSON array with structure:
         missing = []
         
         for clause_id, clause_info in self.STANDARD_CLAUSES.items():
-            # Simple keyword matching for detection
-            keywords = clause_info["name"].lower().split()
+            keywords = self.CLAUSE_PRESENCE_KEYWORDS.get(
+                clause_id,
+                [word for word in clause_info["name"].lower().split() if word not in {"clause", "nda"}],
+            )
             found = any(keyword in document_lower for keyword in keywords)
             
             if not found:
@@ -264,9 +279,9 @@ Return as JSON array with structure:
                     risky_items.append({
                         "risk_id": risk_id,
                         "risk_type": risk_id.replace("_", " ").title(),
-                        "detected_text": match.group(),
+                        "detected_text": document_text[match.start():match.end()],
                         "context": context,
-                        "risk_level": risk_info["risk_level"],
+                        "risk_level": risk_info["risk_level"].title(),
                         "explanation": risk_info["explanation"],
                         "location": {
                             "start": match.start(),
@@ -287,7 +302,7 @@ Return as JSON array with structure:
             Financial risk analysis
         """
         import re
-        
+
         financial_risks = {
             "deposits": [],
             "fees": [],
@@ -296,33 +311,37 @@ Return as JSON array with structure:
             "total_financial_exposure": None,
             "risk_level": "Low"
         }
-        
-        # Find financial amounts
-        amount_pattern = r"\$\s*([0-9,]+(?:\.\d{2})?)"
-        amounts = re.findall(amount_pattern, document_text)
-        
-        # Find deposits
-        deposit_pattern = r"deposit.*?(\$\s*[0-9,]+(?:\.\d{2})?)"
+
+        amount_pattern = r"(?:₹|rs\.?\s*|inr\s*)\s*([0-9,]+(?:\.\d{2})?|\d+(?:,\d+)*|\d+)"
+        usd_amount_pattern = r"\$\s*([0-9,]+(?:\.\d{2})?)"
+        amounts = re.findall(amount_pattern, document_text, re.IGNORECASE)
+        amounts.extend(re.findall(usd_amount_pattern, document_text))
+
+        deposit_pattern = r"deposit[^\n]{0,40}?((?:₹|rs\.?\s*|inr\s*)\s*[0-9,]+(?:\.\d{2})?|\$\s*[0-9,]+(?:\.\d{2})?)"
         deposits = re.findall(deposit_pattern, document_text, re.IGNORECASE)
         if deposits:
             financial_risks["deposits"] = deposits
-        
-        # Find fees
-        fee_pattern = r"fee.*?(\$\s*[0-9,]+(?:\.\d{2})?)"
+
+        fee_pattern = r"(?:fee|rent)[^\n]{0,40}?((?:₹|rs\.?\s*|inr\s*)\s*[0-9,]+(?:\.\d{2})?|\$\s*[0-9,]+(?:\.\d{2})?)"
         fees = re.findall(fee_pattern, document_text, re.IGNORECASE)
         if fees:
             financial_risks["fees"] = fees
-        
-        # Find penalties
-        penalty_pattern = r"penalty.*?(\$\s*[0-9,]+(?:\.\d{2})?)"
+
+        penalty_pattern = r"penalt(?:y|ies)[^\n]{0,40}?((?:₹|rs\.?\s*|inr\s*)\s*[0-9,]+(?:\.\d{2})?|\$\s*[0-9,]+(?:\.\d{2})?)"
         penalties = re.findall(penalty_pattern, document_text, re.IGNORECASE)
         if penalties:
             financial_risks["penalties"] = penalties
-        
-        # Determine risk level based on amounts
-        if penalties or amounts and max(float(a.replace(",", "")) for a in amounts if a) > 50000:
+
+        numeric_amounts = []
+        for amount in amounts:
+            try:
+                numeric_amounts.append(float(str(amount).replace(",", "")))
+            except ValueError:
+                continue
+
+        if penalties or (numeric_amounts and max(numeric_amounts) > 50000):
             financial_risks["risk_level"] = "High"
-        elif deposits or fees:
+        elif deposits or fees or numeric_amounts:
             financial_risks["risk_level"] = "Medium"
         
         return financial_risks
@@ -410,7 +429,7 @@ Return as JSON array with structure:
         # Address high-risk language
         high_risk_items = [
             item for item in risk_analysis.get("risky_language", [])
-            if item.get("risk_level") == "high"
+            if str(item.get("risk_level", "")).lower() == "high"
         ]
         
         if high_risk_items:
@@ -482,8 +501,14 @@ Return as JSON array with structure:
         if not risky_language:
             return 0.0
         
-        high_risk_count = sum(1 for item in risky_language if item.get("risk_level") == "high")
-        medium_risk_count = sum(1 for item in risky_language if item.get("risk_level") == "medium")
+        high_risk_count = sum(
+            1 for item in risky_language
+            if str(item.get("risk_level", "")).lower() == "high"
+        )
+        medium_risk_count = sum(
+            1 for item in risky_language
+            if str(item.get("risk_level", "")).lower() == "medium"
+        )
         
         score = (high_risk_count * 0.08) + (medium_risk_count * 0.03)
         return min(score, 1.0)
