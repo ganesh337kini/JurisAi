@@ -19,8 +19,19 @@ from pydantic import BaseModel, Field
 from services.analyzer import analyze_document_text
 from services.chunking import chunk_text
 from services.extraction import extract_text
-from services.rag_pipeline import run_rag_chat
-from services.rag_settings import get_rag_top_k
+from services.learning_engine import (
+    explain_clause_simple,
+    generate_study_notes,
+    suggest_learning_topics,
+)
+from services.quiz_engine import evaluate_quiz, generate_quiz
+from services.mode_engine import (
+    run_explain_document,
+    run_legal_qa,
+    run_quiz_mode,
+    run_study_mode,
+    run_topics_mode,
+)
 from services.vector_store import purge_document, upsert_chunks
 from services.risk_engine import RiskEngine
 
@@ -54,6 +65,21 @@ class ChatMessage(BaseModel):
     content: str = Field(..., min_length=1)
 
 
+class IntelligenceRequest(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    document_id: str = Field(..., min_length=1)
+    mode: str = Field(..., pattern="^(legal|explain|study|quiz|topics)$")
+    query: str = Field(default="")
+    chat_history: list[ChatMessage] = Field(default_factory=list)
+    extracted_text: str = Field(default="")
+    document_summary: str = Field(default="")
+    short_summary: str = Field(default="")
+    entities: dict = Field(default_factory=dict)
+    clauses: list[dict] = Field(default_factory=list)
+    risks: list[dict] = Field(default_factory=list)
+    top_k: int = Field(default=5, ge=1, le=10)
+
+
 class ChatRequest(BaseModel):
     user_id: str = Field(..., min_length=1)
     document_id: str = Field(..., min_length=1)
@@ -61,7 +87,43 @@ class ChatRequest(BaseModel):
     chat_history: list[ChatMessage] = Field(default_factory=list)
     document_summary: str = Field(default="")
     entities: dict = Field(default_factory=dict)
-    top_k: int = Field(default_factory=get_rag_top_k, ge=1, le=10)
+    clauses: list[dict] = Field(default_factory=list)
+    top_k: int = Field(default=5, ge=1, le=10)
+    mode: str = Field(default="legal", pattern="^legal$")
+
+
+class StudyNotesRequest(BaseModel):
+    document_id: str = Field(..., min_length=1)
+    extracted_text: str = Field(..., min_length=1)
+    summary: str = Field(default="")
+    short_summary: str = Field(default="")
+    clauses: list[dict] = Field(default_factory=list)
+    entities: dict = Field(default_factory=dict)
+    note_type: str = Field(default="revision", pattern="^(revision|exam|quick_reference|key_takeaways)$")
+
+
+class ExplainClauseRequest(BaseModel):
+    clause_text: str = Field(..., min_length=1)
+    clause_title: str = Field(default="Clause")
+
+
+class QuizGenerateRequest(BaseModel):
+    document_id: str = Field(..., min_length=1)
+    extracted_text: str = Field(..., min_length=1)
+    clauses: list[dict] = Field(default_factory=list)
+    entities: dict = Field(default_factory=dict)
+    num_questions: int = Field(default=8, ge=3, le=15)
+
+
+class QuizEvaluateRequest(BaseModel):
+    questions: list[dict] = Field(..., min_length=1)
+    answers: list[dict] = Field(default_factory=list)
+
+
+class LearningTopicsRequest(BaseModel):
+    extracted_text: str = Field(default="")
+    clauses: list[dict] = Field(default_factory=list)
+    entities: dict = Field(default_factory=dict)
 
 
 class RiskAnalysisRequest(BaseModel):
@@ -75,26 +137,89 @@ def health():
     return {"ok": True, "service": "jurisai-ai", "phase": 3}
 
 
-@app.post("/chat")
-def chat_endpoint(body: ChatRequest):
+@app.post("/intelligence")
+def intelligence_endpoint(body: IntelligenceRequest):
     """
-    Phase 3: RAG chat — retrieve chunks from ChromaDB and generate an answer.
+    Document intelligence modes — each mode returns distinct structured output.
+    explain/study/quiz/topics do not require a user query.
     """
     try:
         history = [{"role": m.role, "content": m.content} for m in body.chat_history]
-        result = run_rag_chat(
+        mode = body.mode
+
+        if mode == "legal":
+            if not body.query.strip():
+                raise HTTPException(status_code=400, detail="Query is required for legal mode.")
+            result = run_legal_qa(
+                user_id=body.user_id,
+                document_id=body.document_id,
+                query=body.query,
+                chat_history=history,
+                clauses=body.clauses,
+                top_k=body.top_k,
+            )
+        elif mode == "explain":
+            result = run_explain_document(
+                extracted_text=body.extracted_text,
+                summary=body.document_summary,
+                short_summary=body.short_summary or body.document_summary,
+                entities=body.entities,
+                clauses=body.clauses,
+                risks=body.risks,
+                user_id=body.user_id,
+                document_id=body.document_id,
+            )
+        elif mode == "study":
+            result = run_study_mode(
+                extracted_text=body.extracted_text,
+                summary=body.document_summary,
+                entities=body.entities,
+                clauses=body.clauses,
+                user_id=body.user_id,
+                document_id=body.document_id,
+            )
+        elif mode == "quiz":
+            result = run_quiz_mode(
+                extracted_text=body.extracted_text,
+                entities=body.entities,
+                clauses=body.clauses,
+            )
+        elif mode == "topics":
+            result = run_topics_mode(
+                extracted_text=body.extracted_text,
+                entities=body.entities,
+                clauses=body.clauses,
+                user_id=body.user_id,
+                document_id=body.document_id,
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown mode: {mode}")
+
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/chat")
+def chat_endpoint(body: ChatRequest):
+    """
+    Legal Q&A chat — top-5 RAG with conversational memory and citations.
+    """
+    try:
+        history = [{"role": m.role, "content": m.content} for m in body.chat_history]
+        result = run_legal_qa(
             user_id=body.user_id,
             document_id=body.document_id,
             query=body.query,
-            top_k=body.top_k,
             chat_history=history,
-            document_summary=body.document_summary,
-            entities=body.entities or None,
+            clauses=body.clauses,
+            top_k=body.top_k,
         )
-        return {
-            "answer": result["answer"],
-            "sources": result["sources"],
-        }
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
@@ -191,6 +316,72 @@ async def process_document(
                 tmp_path.unlink()
         except Exception:
             pass
+
+
+@app.post("/generate-study-notes")
+def generate_study_notes_endpoint(body: StudyNotesRequest):
+    """Phase 5: Generate structured study notes from analyzed document."""
+    try:
+        result = generate_study_notes(
+            extracted_text=body.extracted_text,
+            summary=body.summary,
+            short_summary=body.short_summary,
+            clauses=body.clauses,
+            entities=body.entities,
+            note_type=body.note_type,
+        )
+        return {"document_id": body.document_id, **result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/explain-clause")
+def explain_clause_endpoint(body: ExplainClauseRequest):
+    """Phase 5: Beginner-friendly clause explanation."""
+    try:
+        return explain_clause_simple(body.clause_text, body.clause_title)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/generate-quiz")
+def generate_quiz_endpoint(body: QuizGenerateRequest):
+    """Phase 5: Generate quiz from document content."""
+    try:
+        result = generate_quiz(
+            extracted_text=body.extracted_text,
+            clauses=body.clauses,
+            entities=body.entities,
+            num_questions=body.num_questions,
+        )
+        return {"document_id": body.document_id, **result}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/evaluate-quiz")
+def evaluate_quiz_endpoint(body: QuizEvaluateRequest):
+    """Phase 5: Score quiz answers."""
+    try:
+        return evaluate_quiz(questions=body.questions, answers=body.answers)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/suggest-learning-topics")
+def suggest_topics_endpoint(body: LearningTopicsRequest):
+    """Phase 5: Recommend related legal learning topics."""
+    try:
+        topics = suggest_learning_topics(
+            extracted_text=body.extracted_text,
+            clauses=body.clauses,
+            entities=body.entities,
+        )
+        return {"topics": topics}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/analyze-risk")

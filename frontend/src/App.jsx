@@ -8,6 +8,12 @@ import DocumentDetailPage from "./pages/DocumentDetailPage.jsx";
 import UploadPage from "./pages/UploadPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import RiskAnalysisPage from "./pages/RiskAnalysisPage.jsx";
+import LearningHub from "./pages/LearningHub.jsx";
+import LearningNotesPage from "./pages/LearningNotesPage.jsx";
+import QuizCenter from "./pages/QuizCenter.jsx";
+import AnnotationWorkspace from "./pages/AnnotationWorkspace.jsx";
+import DiscussionForum from "./pages/DiscussionForum.jsx";
+import LearningDashboard from "./pages/LearningDashboard.jsx";
 
 export default function App() {
   return (
@@ -22,6 +28,12 @@ export default function App() {
           <Route path="/chat/:documentId" element={<ChatPage />} />
           <Route path="/risk/:documentId" element={<RiskAnalysisPage />} />
           <Route path="/upload" element={<UploadPage />} />
+          <Route path="/learning" element={<LearningDashboard />} />
+          <Route path="/learning/hub" element={<LearningHub />} />
+          <Route path="/learning/notes/:documentId" element={<LearningNotesPage />} />
+          <Route path="/learning/quiz/:documentId" element={<QuizCenter />} />
+          <Route path="/learning/annotate/:documentId" element={<AnnotationWorkspace />} />
+          <Route path="/learning/forum" element={<DiscussionForum />} />
         </Route>
       </Route>
 

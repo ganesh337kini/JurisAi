@@ -32,6 +32,10 @@ export default function AppShell() {
               <span className="h-2 w-2 rounded-full bg-sky-400/80" />
               Upload
             </NavLink>
+            <NavLink to="/learning" className={linkClass}>
+              <span className="h-2 w-2 rounded-full bg-violet-400/80" />
+              Learning
+            </NavLink>
           </nav>
 
           <div className="mt-auto pt-10">
@@ -85,6 +89,16 @@ export default function AppShell() {
                 }
               >
                 Upload
+              </NavLink>
+              <NavLink
+                to="/learning"
+                className={({ isActive }) =>
+                  isActive
+                    ? "flex-1 rounded-xl bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-200 ring-1 ring-emerald-500/30"
+                    : "flex-1 rounded-xl bg-slate-900 px-3 py-2 text-center text-sm text-slate-200 ring-1 ring-slate-800"
+                }
+              >
+                Learning
               </NavLink>
             </div>
           </header>

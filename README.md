@@ -207,6 +207,8 @@ jurisai/
 - If chat returns generic answers, provide `OPENAI_API_KEY` or configure `USE_HF_LLM`.
 - If document analysis fails, confirm `extractedText` exists and the document is processed.
 - If port 5000 is unavailable, set `PORT=5001` in `backend/.env` and update `VITE_BACKEND_ORIGIN` in `frontend/.env`.
+- **`connect ECONNREFUSED 127.0.0.1:27017`:** MongoDB is not running. Start it with `brew services start mongodb-community` (macOS Homebrew), then restart the backend.
+- **`http proxy error: /api/... ECONNREFUSED 127.0.0.1:5001`:** The backend is not running (often because MongoDB failed first). Fix MongoDB, then run `npm run dev` in `backend/`.
 
 ## Push-ready cleanup guidance
 

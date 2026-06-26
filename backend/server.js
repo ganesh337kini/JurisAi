@@ -9,6 +9,11 @@ const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const riskRoutes = require("./routes/riskRoutes");
+const learningRoutes = require("./routes/learningRoutes");
+const notesRoutes = require("./routes/notesRoutes");
+const quizRoutes = require("./routes/quizRoutes");
+const annotationRoutes = require("./routes/annotationRoutes");
+const discussionRoutes = require("./routes/discussionRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -44,13 +49,23 @@ app.use((req, _res, next) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "jurisai-backend", phase: 3, features: ["auth", "documents", "chat"] });
+  res.json({
+    ok: true,
+    service: "jurisai-backend",
+    phase: 5,
+    features: ["auth", "documents", "chat", "risk", "learning", "annotations", "discussions"],
+  });
 });
 
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/risk", riskRoutes);
+app.use("/api/learning", learningRoutes);
+app.use("/api/notes", notesRoutes);
+app.use("/api/quiz", quizRoutes);
+app.use("/api/annotations", annotationRoutes);
+app.use("/api/discussions", discussionRoutes);
 
 // JSON 404 for unknown API routes (avoids HTML error pages in the frontend).
 app.use("/api", (req, res) => {
