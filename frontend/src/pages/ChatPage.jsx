@@ -162,62 +162,65 @@ export default function ChatPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        <div className="space-y-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Document</div>
-          <DocumentTextViewer
-            text={document?.extractedText}
-            highlightText={highlightText}
-            highlightChunkIndex={highlightChunk}
+      {/* ── Main layout: hide document in quiz mode ─────────────── */}
+      {mode === "quiz" ? (
+        <div className="max-w-2xl mx-auto w-full">
+          <QuizIntelligencePanel
+            data={modeData}
+            loading={modeLoading}
+            onGenerate={() => runIntelligence("quiz")}
           />
         </div>
-
-        <div className="lg:sticky lg:top-24 lg:self-start">
-          {mode === "legal" ? (
-            <LegalQAPanel
-              messages={messages}
-              onSend={onSend}
-              loading={sending}
-              disabled={!chatReady}
-              onHighlightSource={onHighlightSource}
-              lastSources={lastSources}
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <div className="space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Document</div>
+            <DocumentTextViewer
+              text={document?.extractedText}
+              highlightText={highlightText}
+              highlightChunkIndex={highlightChunk}
             />
-          ) : null}
+          </div>
 
-          {mode === "explain" ? (
-            <ExplainPanel
-              data={modeData}
-              loading={modeLoading}
-              onGenerate={() => runIntelligence("explain")}
-            />
-          ) : null}
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            {mode === "legal" ? (
+              <LegalQAPanel
+                messages={messages}
+                onSend={onSend}
+                loading={sending}
+                disabled={!chatReady}
+                onHighlightSource={onHighlightSource}
+                lastSources={lastSources}
+              />
+            ) : null}
 
-          {mode === "study" ? (
-            <StudyPanel
-              data={modeData}
-              loading={modeLoading}
-              onGenerate={() => runIntelligence("study")}
-            />
-          ) : null}
+            {mode === "explain" ? (
+              <ExplainPanel
+                data={modeData}
+                loading={modeLoading}
+                onGenerate={() => runIntelligence("explain")}
+              />
+            ) : null}
 
-          {mode === "quiz" ? (
-            <QuizIntelligencePanel
-              data={modeData}
-              loading={modeLoading}
-              onGenerate={() => runIntelligence("quiz")}
-            />
-          ) : null}
+            {mode === "study" ? (
+              <StudyPanel
+                data={modeData}
+                loading={modeLoading}
+                onGenerate={() => runIntelligence("study")}
+              />
+            ) : null}
 
-          {mode === "topics" ? (
-            <TopicsPanel
-              data={modeData}
-              loading={modeLoading}
-              onGenerate={() => runIntelligence("topics")}
-              onSelectTopic={onSelectTopic}
-            />
-          ) : null}
+            {mode === "topics" ? (
+              <TopicsPanel
+                data={modeData}
+                loading={modeLoading}
+                onGenerate={() => runIntelligence("topics")}
+                onSelectTopic={onSelectTopic}
+              />
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
